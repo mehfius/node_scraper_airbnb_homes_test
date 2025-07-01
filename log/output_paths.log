@@ -1,0 +1,16 @@
+Resultados da busca em: 6/30/2025, 9:37:20 AM
+
+--- Buscando por: "Descrição da Casa" (Texto: "Beira mar piscina privat churrasq privat 4 suítes") ---
+-> Encontrados 1 elementos.
+-> Ocorrência 1:
+Cheerio: $('div[itemprop="itemListElement"]').eq(20).children().eq(3).children().eq(0).children().eq(0).children().eq(1).children().eq(1).children().eq(2).children().eq(0)
+Navegador: document.querySelectorAll('div[itemprop="itemListElement"]')[20].children[3].children[0].children[0].children[1].children[1].children[2].children[0]
+
+
+--- Buscando por: "Preço" (Texto: "R$2.032") ---
+-> Encontrados 2 elementos.
+-> Ocorrência 1:
+Cheerio: $('div[itemprop="itemListElement"]').eq(20).children().eq(3).children().eq(0).children().eq(0).children().eq(1).children().eq(1).children().eq(5).children().eq(1).children().eq(0).children().eq(0).children().eq(0).children().eq(0).children().eq(0).children().eq(1).children().eq(0).children().eq(0).children().eq(0)
+Navegador: document.querySelectorAll('div[itemprop="itemListElement"]')[20].children[3].children[0].children[0].children[1].children[1].children[5].children[1].children[0].children[0].children[0].children[0].children[0].children[1].children[0].children[0].children[0]
+-> Ocorrência 2: Não foi possível construir o caminho.
+

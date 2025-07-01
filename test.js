@@ -47,18 +47,18 @@ function tracePath(startNode, stopSelector) {
  */
 async function processHtmlFile() {
   const outputLog = []; // Array para armazenar os resultados detalhados
-  const outputFileName = 'output_paths.log'; // Nome do arquivo de saída
+  const outputFileName = 'log/output_paths.log'; // Nome do arquivo de saída
 
   try {
     // --- Variáveis de configuração para facilitar a manutenção ---
     const searchItems = [
-      { name: "Descrição da Casa", text: "Linda Casa 7 Em Porto Seguro C/4 quartos e Piscina" },
-      { name: "Preço", text: "R$2.092" }
+      { name: "Descrição da Casa", text: "Beira mar piscina privat churrasq privat 4 suítes" },
+      { name: "Preço", text: "R$2.032" }
     ];
     const rootSelector = 'div[itemprop="itemListElement"]';
     // -----------------------------------------------------------
 
-    const htmlContent = await fs.readFile('test/original.html', 'utf-8');
+    const htmlContent = await fs.readFile('test/original/1000rooms.html', 'utf-8');
     const $ = cheerio.load(htmlContent);
     const allRootDivs = $(rootSelector);
 

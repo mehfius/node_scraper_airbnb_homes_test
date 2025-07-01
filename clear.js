@@ -10,8 +10,8 @@ const attributesToKeep = [
 ];
 
 // Define os caminhos para os arquivos de entrada e saída
-const inputFile = path.join(__dirname, 'test', 'original.html');
-const outputFile = path.join(__dirname, 'test', 'new.html');
+const inputFile = path.join(__dirname, 'test/original', '1000rooms.html');
+const outputFile = path.join(__dirname, 'test/clear', '1000rooms.html');
 const outputDir = path.dirname(outputFile);
 
 try {
