@@ -53,12 +53,14 @@ async function processHtmlFile() {
     // --- Variáveis de configuração para facilitar a manutenção ---
     const searchItems = [
       { name: "Descrição da Casa", text: "Beira mar piscina privat churrasq privat 4 suítes" },
-      { name: "Preço", text: "R$2.032" }
+      { name: "Preço", text: "R$3.892" }
     ];
     const rootSelector = 'div[itemprop="itemListElement"]';
     // -----------------------------------------------------------
 
-    const htmlContent = await fs.readFile('test/original/1000rooms.html', 'utf-8');
+    // Adição para imprimir o arquivo que está sendo lido
+    console.log(`${colors.fg.yellow}Lendo o arquivo: test/jobs/27/2025-07-04/01.html${colors.reset}`);
+    const htmlContent = await fs.readFile('test/jobs/27/2025-07-04/01.html', 'utf-8');
     const $ = cheerio.load(htmlContent);
     const allRootDivs = $(rootSelector);
 
