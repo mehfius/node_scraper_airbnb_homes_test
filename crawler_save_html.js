@@ -7,7 +7,12 @@ const puppeteer = require('puppeteer');
 
 dotenv.config();
 
-async function printJobDatesAndCreateFolders() {
+async function printJobDatesAndCreateFolders(jobId) {
+    if (!jobId) {
+        console.error("É necessário fornecer um ID de job como argumento.");
+        return;
+    }
+
     const totalStartTime = performance.now();
 
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -23,6 +28,7 @@ async function printJobDatesAndCreateFolders() {
     const { data: jobs, error } = await supabase
         .from('jobs')
         .select('*')
+        .eq('id', jobId)
         .order('id', { ascending: false })
         .limit(1);
 
@@ -33,7 +39,7 @@ async function printJobDatesAndCreateFolders() {
 
     const jobConfig = jobs[0];
     if (!jobConfig) {
-        console.log('Nenhum job encontrado.');
+        console.log(`Nenhum job encontrado com o ID ${jobId}.`);
         return;
     }
 
@@ -59,7 +65,7 @@ async function printJobDatesAndCreateFolders() {
     const initialCheckinStr = format(initialCheckinDate, 'yyyy-MM-dd');
     console.log(`\x1b[35mVerificando a partir de [${initialCheckinStr}] por ${jobConfig.days} dias.\x1b[0m`);
 
-    const numPagesPerDay = 4;
+    const numPagesPerDay = 2;
 
     let browser;
     try {
@@ -154,4 +160,5 @@ async function printJobDatesAndCreateFolders() {
     console.log(`\nTempo total gasto: ${totalDurationInSeconds} segundos.`);
 }
 
-printJobDatesAndCreateFolders();
+const jobIdFromArgs = process.argv[2];
+printJobDatesAndCreateFolders(jobIdFromArgs);

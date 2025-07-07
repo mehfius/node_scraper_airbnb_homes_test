@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const green = '\x1b[32m';
 const red = '\x1b[31m';
+const yellow = '\x1b[33m';
 const reset = '\x1b[0m';
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -77,7 +78,9 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                     }
 
                     try {
-                        const priceElement = element.querySelectorAll('button')[3].querySelectorAll('span')[0];
+                        const priceElement = element.querySelectorAll('button')[3]?.querySelectorAll('span')[0] || 
+                                             element.querySelectorAll('button')[4]?.querySelectorAll('span')[0] || 
+                                             element.querySelectorAll('button')[1]?.querySelectorAll('span')[0];
                         const urlRoomElement = element.querySelector('meta[itemprop="url"]').getAttribute('content') || 'URL não encontrada';
                         const room = urlRoomElement.match(/\/rooms\/(\d+)/)?.[1] || null;
 
@@ -106,20 +109,22 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                         if (error) {
                             console.error(`${red}Erro ao inserir dados no Supabase:`, error.message, `${reset}`);
                         } else {
-                            console.log(`${green}Dados inseridos no Supabase com sucesso!`, historyData.room, `${reset}`);
+                            console.log(`${green}Success. Position: ${position} - ${datesFormatted} - Price: ${price} - Availables: ${availables} - Room: ${historyData.room}${reset}`);
                         }
 
-                        if (priceElement) {
-                            console.log(`   ${green}Position ${position} - ${datesFormatted} - Price: ${price} - Room: ${room} - Availables: ${availables}${reset}`);
-                        } else {
+                        if (!priceElement) {
                             const logFileName = path.join(fileLogDirPath, `${String(index + 1).padStart(2, '0')}_error.html`);
                             fs.writeFileSync(logFileName, element.outerHTML, 'utf-8');
-                            console.log(`   ${red}Position ${position} - ${datesFormatted} - Price não encontrado. \x1b]8;;file://${logFileName}\x1b\\[link]\x1b]8;;\x1b\\${reset}`);
+                            console.log(`${red}Position ${position} - ${datesFormatted} - Price não encontrado.${reset}`);
+                            console.log(`${yellow}Log: ${logFileName}${reset}`);
+                            console.log(`${yellow}Original: ${filename}${reset}`);
                         }
                     } catch (e) {
                         const logFileName = path.join(fileLogDirPath, `${String(index + 1).padStart(2, '0')}_error.html`);
                         fs.writeFileSync(logFileName, element.outerHTML, 'utf-8');
-                        console.log(`   ${red}Position ${String(globalPosition).padStart(2, '0')} - Erro ao extrair dados. \x1b]8;;file://${logFileName}\x1b\\[link]\x1b]8;;\x1b\\${reset}`);
+                        console.log(`${red}Position ${String(globalPosition).padStart(2, '0')} - Erro ao extrair dados.${reset}`);
+                        console.log(`${yellow}Log: ${logFileName}${reset}`);
+                        console.log(`${yellow}Original: ${filename}${reset}`);
                     }
                 }
             } catch (error) {

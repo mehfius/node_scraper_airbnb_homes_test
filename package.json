@@ -4,10 +4,12 @@
   "description": "Atualizar informacoes do host do Airbnb",
   "main": "index.js",
   "scripts": {
-    "load": "node crawler_load_html.js",
-    "clear": "node clear.js",    
-    "save": "node crawler_save_html.js",  
-    "start": "node index.js",    
+    "load": "node crawler_load_html.js 27",
+    "clear": "node crawler_optimize.js 27",    
+    "save": "node crawler_save_html.js 27",  
+    "update_rooms": "node update_rooms.js",      
+    "update_hosts": "node update_hosts.js",         
+    "start": "npm run save && npm run clear && npm run load && npm run update_rooms && npm run update_hosts",    
     "docker:build": "docker build -t mehfius/scrapebnb-host --no-cache .",
     "docker:push": "docker push mehfius/scrapebnb-job",
     "docker:release": "npm run docker:build && npm run docker:push"
