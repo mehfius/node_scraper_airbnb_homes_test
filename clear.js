@@ -33,8 +33,6 @@ const processDirectory = (directoryPath) => {
                 $(elementsToRemoveSelector).remove();
                 $mainTag.find('script, style, link, svg').remove();
 
-            
-
                 $mainTag.find('*').each(function() {
                     const element = $(this);
                     const attrs = { ...element.attr() };
@@ -56,9 +54,10 @@ const processDirectory = (directoryPath) => {
             }
         });
     } catch (error) {
-        
+        // Handle error, e.g., log it
     }
 };
 
-const startingDir = path.join(__dirname, 'test/jobs/27');
+const jobArg = process.argv[2]; 
+const startingDir = path.join(__dirname, `test/jobs/${jobArg}`);
 processDirectory(startingDir);
