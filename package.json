@@ -4,9 +4,9 @@
   "description": "Atualizar informacoes do host do Airbnb",
   "main": "index.js",
   "scripts": {
-    "load": "node crawler_load_html.js 27",
-    "clear": "node crawler_optimize.js 27",    
-    "save": "node crawler_save_html.js 27",  
+    "save": "node crawler_save_html.js 29",  
+    "clear": "node crawler_optimize.js 29",    
+    "load": "node crawler_load_html.js 29",
     "update_rooms": "node update_rooms.js",      
     "update_hosts": "node update_hosts.js",         
     "start": "npm run save && npm run clear && npm run load && npm run update_rooms && npm run update_hosts",    

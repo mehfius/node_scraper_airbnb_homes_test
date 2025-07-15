@@ -9,7 +9,7 @@ async function main() {
 
     const scrapeRoomEndpoint = process.env.SCRAPE_ROOM_URL;
 
-    const concurrencyLimit = 3;
+    const concurrencyLimit = 1;
 
     const startTime = Date.now();
 
@@ -39,7 +39,7 @@ async function main() {
             const promises = batch.map(async (entry) => {
                 const currentRoomId = String(entry.room);
                 let payloadToUpsert = {}; // Inicializa vazio, será preenchido apenas no sucesso
-
+                console.log(scrapeRoomEndpoint)
                 try {
                     const scrapeResponse = await fetch(scrapeRoomEndpoint, {
                         method: 'POST',
