@@ -81,20 +81,28 @@ const processDirectory = (directoryPath, outputBasePath) => {
     }
 };
 
-const jobArg = process.argv[2];
-if (!jobArg) {
-    console.error('Please provide a job argument (e.g., node script.js your_job_name)');
+const startingBaseDir = path.join(__dirname, 'test/jobs');
+const outputRoot = path.join(__dirname, 'html/optimized');
+
+try {
+    if (fs.existsSync(outputRoot)) {
+        fs.rmSync(outputRoot, { recursive: true, force: true });
+        console.log(`Pasta existente removida: ${outputRoot}`);
+    }
+    fs.mkdirSync(outputRoot, { recursive: true });
+
+    const jobFolders = fs.readdirSync(startingBaseDir).filter(file => {
+        return fs.statSync(path.join(startingBaseDir, file)).isDirectory();
+    });
+
+    jobFolders.forEach(jobFolder => {
+        const currentStartingDir = path.join(startingBaseDir, jobFolder);
+        const currentOutputStartingDir = path.join(outputRoot, `jobs/${jobFolder}`);
+        fs.mkdirSync(currentOutputStartingDir, { recursive: true });
+        processDirectory(currentStartingDir, currentOutputStartingDir);
+    });
+
+} catch (error) {
+    console.error(`Erro ao processar o diretório base:`, error);
     process.exit(1);
 }
-
-const startingDir = path.join(__dirname, `test/jobs/${jobArg}`);
-const outputRoot = path.join(__dirname, 'html/optimized');
-const outputStartingDir = path.join(outputRoot, `jobs/${jobArg}`);
-
-if (fs.existsSync(outputStartingDir)) {
-    fs.rmSync(outputStartingDir, { recursive: true, force: true });
-    console.log(`Pasta existente removida: ${outputStartingDir}`);
-}
-
-fs.mkdirSync(outputStartingDir, { recursive: true });
-processDirectory(startingDir, outputStartingDir);

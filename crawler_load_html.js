@@ -78,8 +78,8 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                     }
 
                     try {
-                        const priceElement = element.querySelectorAll('button')[3]?.querySelectorAll('span')[0] || 
-                                             element.querySelectorAll('button')[4]?.querySelectorAll('span')[0] || 
+                        const priceElement = element.querySelectorAll('button')[3]?.querySelectorAll('span')[0] ||
+                                             element.querySelectorAll('button')[4]?.querySelectorAll('span')[0] ||
                                              element.querySelectorAll('button')[1]?.querySelectorAll('span')[0];
                         const urlRoomElement = element.querySelector('meta[itemprop="url"]').getAttribute('content') || 'URL não encontrada';
                         const room = urlRoomElement.match(/\/rooms\/(\d+)/)?.[1] || null;
@@ -120,7 +120,7 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                             console.log(`${yellow}Original: ${filename}${reset}`);
                         }
                     } catch (e) {
-                        const logFileName = path.join(fileLogDirPath, `${String(index + 1).padStart(2, '0')}_error.html`);
+                        const logFileName = path.join(fileLogDirPath, `${String(globalPosition).padStart(2, '0')}_error.html`);
                         fs.writeFileSync(logFileName, element.outerHTML, 'utf-8');
                         console.log(`${red}Position ${String(globalPosition).padStart(2, '0')} - Erro ao extrair dados.${reset}`);
                         console.log(`${yellow}Log: ${logFileName}${reset}`);
@@ -135,11 +135,18 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
 }
 
 async function runScript() {
-    const args = process.argv;
-    const jobValue = args[2];
+    const jobsPath = './html/optimized/jobs';
+    if (!fs.existsSync(jobsPath)) {
+        console.log(`Diretório de jobs não encontrado: ${jobsPath}`);
+        return;
+    }
 
-    if (jobValue) {
-        console.log(`Valor recebido para o job: ${jobValue}`);
+    const jobDirectories = fs.readdirSync(jobsPath).filter(file => {
+        return fs.lstatSync(path.join(jobsPath, file)).isDirectory();
+    });
+
+    for (const jobValue of jobDirectories) {
+        console.log(`Processando job: ${jobValue}`);
 
         const { error: deleteError } = await supabase
             .from('history')
@@ -148,15 +155,17 @@ async function runScript() {
 
         if (deleteError) {
             console.error(`${red}Erro ao limpar registros anteriores do job '${jobValue}':`, deleteError.message, `${reset}`);
-            return;
+            continue; // Continue to the next job even if one fails to clear
         } else {
             console.log(`${green}Registros anteriores do job '${jobValue}' limpos com sucesso!${reset}`);
         }
 
-        const directoryPath = `./html/optimized/jobs/${jobValue}`;
+        const directoryPath = path.join(jobsPath, jobValue);
         await countElementsInHtmlFiles(directoryPath, jobValue);
-    } else {
-        console.log('Nenhum valor para o job foi passado. Por favor, forneça um valor como argumento.');
+    }
+
+    if (jobDirectories.length === 0) {
+        console.log('Nenhum diretório de job encontrado na pasta test/jobs/.');
     }
 }
 
