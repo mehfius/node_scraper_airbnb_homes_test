@@ -84,7 +84,6 @@ async function printJobDatesAndCreateFolders() {
     }
 
     const pageProcessingTimeEstimate = 3;
-    const numPagesPerDay = 2;
 
     // Criar o diretório de cache do navegador se não existir
     try {
@@ -99,7 +98,7 @@ async function printJobDatesAndCreateFolders() {
     try {
         // Inicia o Puppeteer com userDataDir para persistir o cache do navegador
         browser = await puppeteer.launch({
-            headless: false,
+            headless: 'new',
             userDataDir: USER_DATA_DIR, // <-- AQUI ESTÁ A MUDANÇA PRINCIPAL
             args: [
                 '--no-sandbox',
@@ -114,6 +113,7 @@ async function printJobDatesAndCreateFolders() {
         for (const jobConfig of jobs) {
             console.log(`\n--- Processando Job ID: ${jobConfig.id} ---`);
 
+            const numPagesPerDay = jobConfig.pages; // Pega o atributo pages do banco de dados
             const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
 
             try {
