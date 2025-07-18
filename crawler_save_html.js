@@ -7,6 +7,9 @@ const puppeteer = require('puppeteer');
 
 dotenv.config();
 
+// Define o caminho para o diretório de dados do usuário do navegador
+const USER_DATA_DIR = path.join(__dirname, 'browser_cache');
+
 async function saveRequestLogs(jobId, dateStr, pageNumber, requests) {
     const logFolderPath = path.join(__dirname, 'logs', jobId.toString());
     await fs.mkdir(logFolderPath, { recursive: true });
@@ -83,56 +86,69 @@ async function printJobDatesAndCreateFolders() {
     const pageProcessingTimeEstimate = 3;
     const numPagesPerDay = 2;
 
-    for (const jobConfig of jobs) {
-        console.log(`\n--- Processando Job ID: ${jobConfig.id} ---`);
+    // Criar o diretório de cache do navegador se não existir
+    try {
+        await fs.mkdir(USER_DATA_DIR, { recursive: true });
+        console.log(`Diretório de cache do navegador criado/verificado: ${USER_DATA_DIR}`);
+    } catch (err) {
+        console.error(`Erro ao criar diretório de cache do navegador:`, err.message);
+        return;
+    }
 
-        const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
+    let browser;
+    try {
+        // Inicia o Puppeteer com userDataDir para persistir o cache do navegador
+        browser = await puppeteer.launch({
+            headless: false,
+            userDataDir: USER_DATA_DIR, // <-- AQUI ESTÁ A MUDANÇA PRINCIPAL
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-gpu',
+                '--disable-dev-shm-usage'
+            ]
+        });
+        console.log(`Navegador Puppeteer iniciado com cache persistente em ${USER_DATA_DIR}.`);
 
-        try {
-            await supabase
-                .from('jobs')
-                .update({ status: 'extracting_html', remaining_seconds: estimatedRemainingSeconds })
-                .eq('id', jobConfig.id);
-            console.log(`Job ID ${jobConfig.id} atualizado para status 'extracting_html' com ${estimatedRemainingSeconds} segundos estimados.`);
-        } catch (updateError) {
-            console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
-        }
+        for (const jobConfig of jobs) {
+            console.log(`\n--- Processando Job ID: ${jobConfig.id} ---`);
 
-        const jobFolderPath = path.join(__dirname, 'html', 'original', 'jobs', jobConfig.id.toString());
+            const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
 
-        try {
-            await fs.rm(jobFolderPath, { recursive: true, force: true });
-            console.log(`Pasta existente do job ${jobConfig.id} removida.`);
-        } catch (err) {
-            console.error(`Erro ao remover pasta existente para job ${jobConfig.id}:`, err.message);
-        }
+            try {
+                await supabase
+                    .from('jobs')
+                    .update({ status: 'extracting_html', remaining_seconds: estimatedRemainingSeconds })
+                    .eq('id', jobConfig.id);
+                console.log(`Job ID ${jobConfig.id} atualizado para status 'extracting_html' com ${estimatedRemainingSeconds} segundos estimados.`);
+            } catch (updateError) {
+                console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
+            }
 
-        try {
-            await fs.mkdir(jobFolderPath, { recursive: true });
-        } catch (err) {
-            console.error(`Erro ao criar pasta para job ${jobConfig.id}:`, err.message);
-            continue;
-        }
+            const jobFolderPath = path.join(__dirname, 'html', 'original', 'jobs', jobConfig.id.toString());
 
-        const today = new Date();
+            // Manter a lógica de criação e limpeza de pastas para os arquivos HTML salvos,
+            // mas o cache do navegador é separado em USER_DATA_DIR.
+            try {
+                // Não remove a pasta jobFolderPath se você quiser manter os HTMLs salvos como arquivos
+                await fs.rm(jobFolderPath, { recursive: true, force: true });
+                console.log(`Pasta existente de arquivos HTML para o job ${jobConfig.id} removida.`);
+            } catch (err) {
+                console.error(`Erro ao remover pasta existente de arquivos HTML para job ${jobConfig.id}:`, err.message);
+            }
 
-        const initialCheckinDate = addDays(today, 1);
-        const initialCheckinStr = format(initialCheckinDate, 'yyyy-MM-dd');
-        console.log(`\x1b[35mVerificando a partir de [${initialCheckinStr}] por ${jobConfig.days} dias.\x1b[0m`);
+            try {
+                await fs.mkdir(jobFolderPath, { recursive: true });
+            } catch (err) {
+                console.error(`Erro ao criar pasta de arquivos HTML para job ${jobConfig.id}:`, err.message);
+                continue;
+            }
 
-        let browser;
-        try {
-            browser = await puppeteer.launch({
-                headless: "new",
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-web-security',
-                    '--disable-gpu',
-                    '--disable-dev-shm-usage'
-                ]
-            });
-            console.log(`Navegador Puppeteer iniciado para Job ID ${jobConfig.id}.`);
+            const today = new Date();
+            const initialCheckinDate = addDays(today, 1);
+            const initialCheckinStr = format(initialCheckinDate, 'yyyy-MM-dd');
+            console.log(`\x1b[35mVerificando a partir de [${initialCheckinStr}] por ${jobConfig.days} dias.\x1b[0m`);
 
             let totalBytesDownloadedForJob = 0;
 
@@ -169,6 +185,7 @@ async function printJobDatesAndCreateFolders() {
 
                     const pageDescription = `Página ${pageNumber + 1}`;
                     const fileName = `${(pageNumber + 1).toString().padStart(2, '0')}.html`;
+                    const filePath = path.join(dateFolderPath, fileName);
 
                     pagePromisesForCurrentDay.push((async () => {
                         let page;
@@ -198,7 +215,6 @@ async function printJobDatesAndCreateFolders() {
                             await page.goto(airbnbUrl, { waitUntil: 'networkidle2', timeout: 90000 });
 
                             const content = await page.content();
-                            const filePath = path.join(dateFolderPath, fileName);
                             await fs.writeFile(filePath, content);
 
                             await saveRequestLogs(jobConfig.id, checkinStr, pageNumber + 1, requestsForPage);
@@ -231,23 +247,25 @@ async function printJobDatesAndCreateFolders() {
                 }
             }
             console.log(`\x1b[34mTotal de KB baixados para o Job ID ${jobConfig.id}: ${(totalBytesDownloadedForJob / 1024).toFixed(2)} KB\x1b[0m`);
-
-        } catch (browserError) {
-            console.error(`Erro ao iniciar ou usar o navegador Puppeteer para Job ID ${jobConfig.id}:`, browserError.message);
-        } finally {
-            if (browser) {
-                await browser.close();
-                console.log(`Navegador Puppeteer fechado para Job ID ${jobConfig.id}.`);
-            }
         }
-        try {
-            await supabase
-                .from('jobs')
-                .update({ status: 'completed', remaining_seconds: 0 })
-                .eq('id', jobConfig.id);
-            console.log(`Job ID ${jobConfig.id} concluído. Status atualizado para 'completed'.`);
-        } catch (updateError) {
-            console.error(`Erro ao finalizar status do Job ID ${jobConfig.id}:`, updateError.message);
+
+    } catch (browserError) {
+        console.error(`Erro ao iniciar ou usar o navegador Puppeteer:`, browserError.message);
+    } finally {
+        if (browser) {
+            await browser.close();
+            console.log(`Navegador Puppeteer fechado.`);
+        }
+        for (const jobConfig of jobs) {
+            try {
+                await supabase
+                    .from('jobs')
+                    .update({ status: 'completed', remaining_seconds: 0 })
+                    .eq('id', jobConfig.id);
+                console.log(`Job ID ${jobConfig.id} concluído. Status atualizado para 'completed'.`);
+            } catch (updateError) {
+                console.error(`Erro ao finalizar status do Job ID ${jobConfig.id}:`, updateError.message);
+            }
         }
     }
 
