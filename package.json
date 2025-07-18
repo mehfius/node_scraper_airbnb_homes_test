@@ -9,7 +9,7 @@
     "load": "node crawler_load_html.js",
     "update_rooms": "node update_rooms.js",
     "update_hosts": "node update_hosts.js",
-    "start": "npm run save && npm run clear && npm run load && npm run update_rooms && npm run update_hosts",
+    "start": "node index.js",
     "docker:build": "docker build -t mehfius/scrapebnb-job --no-cache .",
     "docker:push": "docker push mehfius/scrapebnb-job",
     "docker:release": "npm run docker:build && npm run docker:push"

@@ -136,14 +136,28 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
 
 async function runScript() {
     const jobsPath = './html/optimized/jobs';
+    const specificJobId = process.argv[2]; 
+
+    if (specificJobId) {
+        console.log(`Processando apenas o job com ID: ${specificJobId}`);
+    }
+
     if (!fs.existsSync(jobsPath)) {
         console.log(`Diretório de jobs não encontrado: ${jobsPath}`);
         return;
     }
 
-    const jobDirectories = fs.readdirSync(jobsPath).filter(file => {
+    let jobDirectories = fs.readdirSync(jobsPath).filter(file => {
         return fs.lstatSync(path.join(jobsPath, file)).isDirectory();
     });
+
+    if (specificJobId) {
+        jobDirectories = jobDirectories.filter(job => job === specificJobId);
+        if (jobDirectories.length === 0) {
+            console.log(`Nenhum diretório encontrado para o job ID: ${specificJobId}`);
+            return;
+        }
+    }
 
     for (const jobValue of jobDirectories) {
         console.log(`Processando job: ${jobValue}`);
@@ -155,7 +169,7 @@ async function runScript() {
 
         if (deleteError) {
             console.error(`${red}Erro ao limpar registros anteriores do job '${jobValue}':`, deleteError.message, `${reset}`);
-            continue; // Continue to the next job even if one fails to clear
+            continue;
         } else {
             console.log(`${green}Registros anteriores do job '${jobValue}' limpos com sucesso!${reset}`);
         }
@@ -164,8 +178,8 @@ async function runScript() {
         await countElementsInHtmlFiles(directoryPath, jobValue);
     }
 
-    if (jobDirectories.length === 0) {
-        console.log('Nenhum diretório de job encontrado na pasta test/jobs/.');
+    if (jobDirectories.length === 0 && !specificJobId) {
+        console.log('Nenhum diretório de job encontrado na pasta html/optimized/jobs/.');
     }
 }
 

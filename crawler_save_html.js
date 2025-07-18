@@ -20,10 +20,21 @@ async function printJobDatesAndCreateFolders() {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const { data: jobs, error } = await supabase
+    const jobIdToExecute = process.argv[2]; // Captura o terceiro argumento da linha de comando (índice 2)
+
+    let query = supabase
         .from('jobs')
         .select('*')
         .order('id', { ascending: false });
+
+    if (jobIdToExecute) {
+        query = query.eq('id', parseInt(jobIdToExecute, 10)); // Adiciona filtro por ID se o argumento existir
+        console.log(`Executando apenas o Job ID: ${jobIdToExecute}`);
+    } else {
+        console.log("Executando todos os jobs.");
+    }
+
+    const { data: jobs, error } = await query;
 
     if (error) {
         console.error('Erro ao buscar jobs:', error.message);
@@ -31,7 +42,7 @@ async function printJobDatesAndCreateFolders() {
     }
 
     if (!jobs || jobs.length === 0) {
-        console.log(`Nenhum job encontrado na tabela.`);
+        console.log(`Nenhum job encontrado na tabela ${jobIdToExecute ? `com o ID ${jobIdToExecute}` : ''}.`);
         return;
     }
 
