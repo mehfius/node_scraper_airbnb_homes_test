@@ -46,8 +46,24 @@ async function printJobDatesAndCreateFolders() {
         return;
     }
 
+    const pageProcessingTimeEstimate = 3; // Estimativa de segundos por página
+    const numPagesPerDay = 2;
+
     for (const jobConfig of jobs) {
         console.log(`\n--- Processando Job ID: ${jobConfig.id} ---`);
+
+        const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
+
+        // Atualiza o status e a estimativa de tempo ao iniciar o job
+        try {
+            await supabase
+                .from('jobs')
+                .update({ status: 'extracting_html', remaining_seconds: estimatedRemainingSeconds })
+                .eq('id', jobConfig.id);
+            console.log(`Job ID ${jobConfig.id} atualizado para status 'extracting_html' com ${estimatedRemainingSeconds} segundos estimados.`);
+        } catch (updateError) {
+            console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
+        }
 
         const jobFolderPath = path.join(__dirname, 'test', 'jobs', jobConfig.id.toString());
 
@@ -70,8 +86,6 @@ async function printJobDatesAndCreateFolders() {
         const initialCheckinDate = addDays(today, 1);
         const initialCheckinStr = format(initialCheckinDate, 'yyyy-MM-dd');
         console.log(`\x1b[35mVerificando a partir de [${initialCheckinStr}] por ${jobConfig.days} dias.\x1b[0m`);
-
-        const numPagesPerDay = 2;
 
         let browser;
         try {
@@ -150,6 +164,18 @@ async function printJobDatesAndCreateFolders() {
                     })());
                 }
                 await Promise.all(pagePromisesForCurrentDay);
+
+                // Abate o tempo estimado restante por dia
+                const remainingSecondsAfterDay = estimatedRemainingSeconds - ((dayOffset + 1) * numPagesPerDay * pageProcessingTimeEstimate);
+                try {
+                    await supabase
+                        .from('jobs')
+                        .update({ remaining_seconds: Math.max(0, remainingSecondsAfterDay) })
+                        .eq('id', jobConfig.id);
+                    console.log(`Job ID ${jobConfig.id}: Tempo restante atualizado para ${Math.max(0, remainingSecondsAfterDay)} segundos.`);
+                } catch (updateError) {
+                    console.error(`Erro ao atualizar tempo restante do Job ID ${jobConfig.id}:`, updateError.message);
+                }
             }
 
         } catch (browserError) {
@@ -159,6 +185,16 @@ async function printJobDatesAndCreateFolders() {
                 await browser.close();
                 console.log(`Navegador Puppeteer fechado para Job ID ${jobConfig.id}.`);
             }
+        }
+        // Ao finalizar o job, atualiza o status para 'completed' e remaining_seconds para 0
+        try {
+            await supabase
+                .from('jobs')
+                .update({ status: 'completed', remaining_seconds: 0 })
+                .eq('id', jobConfig.id);
+            console.log(`Job ID ${jobConfig.id} concluído. Status atualizado para 'completed'.`);
+        } catch (updateError) {
+            console.error(`Erro ao finalizar status do Job ID ${jobConfig.id}:`, updateError.message);
         }
     }
 

@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
+const { exec } = require('child_process'); // Adicionei esta linha para importar 'exec'
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
@@ -34,6 +35,21 @@ function connectSupabase() {
             console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao atualizar o status para working:`, error);
           } else {
             console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${payload.new.id} atualizado com sucesso para 'working'.`);
+
+            // Executa o comando 'node npm run ID_DO_JOB'
+            const jobId = payload.new.id;
+            exec(`npm run save ${jobId}`, (execError, stdout, stderr) => {
+              if (execError) {
+                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run save ${jobId}': ${execError}`);
+                return;
+              }
+              if (stdout) {
+                console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run save ${jobId}':\n${stdout}`);
+              }
+              if (stderr) {
+                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run save ${jobId}' (stderr):\n${stderr}`);
+              }
+            });
           }
         }
       }
