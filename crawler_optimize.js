@@ -81,7 +81,7 @@ const processDirectory = (directoryPath, outputBasePath) => {
     }
 };
 
-const startingBaseDir = path.join(__dirname, 'test/jobs');
+const startingBaseDir = path.join(__dirname, 'html/original/jobs');
 const outputRoot = path.join(__dirname, 'html/optimized');
 
 try {

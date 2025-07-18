@@ -13,31 +13,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-async function cleanLogDirectory(logPath) {
-    if (fs.existsSync(logPath)) {
-        fs.readdirSync(logPath).forEach(file => {
-            const curPath = path.join(logPath, file);
-            if (fs.lstatSync(curPath).isDirectory()) {
-                cleanLogDirectory(curPath);
-                fs.rmdirSync(curPath);
-            } else {
-                fs.unlinkSync(curPath);
-            }
-        });
-    }
-}
-
 async function countElementsInHtmlFiles(startPath, jobValue) {
     if (!fs.existsSync(startPath)) {
         console.log("Diretório não encontrado:", startPath);
         return;
     }
-
-    const baseLogDirPath = './log';
-    const relativeStartPath = path.relative('./html/optimized', startPath);
-    const jobLogDirPath = path.join(baseLogDirPath, relativeStartPath);
-
-    await cleanLogDirectory(jobLogDirPath);
 
     const files = fs.readdirSync(startPath);
     let globalPosition = 0;
@@ -70,13 +50,7 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
 
                 for (const [index, element] of elements.entries()) {
                     globalPosition++;
-                    const relativeFilePath = path.relative('./html/optimized', filename);
-                    const fileLogDirPath = path.join(baseLogDirPath, path.dirname(relativeFilePath), path.basename(filename, '.html'));
-
-                    if (!fs.existsSync(fileLogDirPath)) {
-                        fs.mkdirSync(fileLogDirPath, { recursive: true });
-                    }
-
+                    
                     try {
                         const priceElement = element.querySelectorAll('button')[3]?.querySelectorAll('span')[0] ||
                                              element.querySelectorAll('button')[4]?.querySelectorAll('span')[0] ||
@@ -113,18 +87,10 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                         }
 
                         if (!priceElement) {
-                            const logFileName = path.join(fileLogDirPath, `${String(index + 1).padStart(2, '0')}_error.html`);
-                            fs.writeFileSync(logFileName, element.outerHTML, 'utf-8');
                             console.log(`${red}Position ${position} - ${datesFormatted} - Price não encontrado.${reset}`);
-                            console.log(`${yellow}Log: ${logFileName}${reset}`);
-                            console.log(`${yellow}Original: ${filename}${reset}`);
                         }
                     } catch (e) {
-                        const logFileName = path.join(fileLogDirPath, `${String(globalPosition).padStart(2, '0')}_error.html`);
-                        fs.writeFileSync(logFileName, element.outerHTML, 'utf-8');
                         console.log(`${red}Position ${String(globalPosition).padStart(2, '0')} - Erro ao extrair dados.${reset}`);
-                        console.log(`${yellow}Log: ${logFileName}${reset}`);
-                        console.log(`${yellow}Original: ${filename}${reset}`);
                     }
                 }
             } catch (error) {

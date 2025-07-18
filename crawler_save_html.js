@@ -7,6 +7,40 @@ const puppeteer = require('puppeteer');
 
 dotenv.config();
 
+async function saveRequestLogs(jobId, dateStr, pageNumber, requests) {
+    const logFolderPath = path.join(__dirname, 'logs', jobId.toString());
+    await fs.mkdir(logFolderPath, { recursive: true });
+    const logFilePath = path.join(logFolderPath, `${dateStr}_page${pageNumber}.json`);
+
+    const logData = await Promise.all(requests.map(async (req) => {
+        let contentLengthBytes = 0;
+        try {
+            const response = await req.response();
+            if (response) {
+                const headers = response.headers();
+                if (headers['content-length']) {
+                    contentLengthBytes = parseInt(headers['content-length'], 10);
+                } else {
+                    const buffer = await response.buffer();
+                    contentLengthBytes = buffer.length;
+                }
+            }
+        } catch (e) {
+            // Error handling for responses that might not have a buffer or headers
+        }
+        const contentLengthKB = (contentLengthBytes / 1024).toFixed(2); // Convert to KB and fix to 2 decimal places
+        return {
+            url: req.url(),
+            resourceType: req.resourceType(),
+            method: req.method(),
+            contentLengthKB: parseFloat(contentLengthKB) // Salva o tamanho em KB como número
+        };
+    }));
+
+    await fs.writeFile(logFilePath, JSON.stringify(logData, null, 2));
+    console.log(`      \x1b[35mLogs de requisição salvos para Job ID ${jobId}, data ${dateStr}, página ${pageNumber}.\x1b[0m`);
+}
+
 async function printJobDatesAndCreateFolders() {
     const totalStartTime = performance.now();
 
@@ -20,7 +54,7 @@ async function printJobDatesAndCreateFolders() {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const jobIdToExecute = process.argv[2]; // Captura o terceiro argumento da linha de comando (índice 2)
+    const jobIdToExecute = process.argv[2];
 
     let query = supabase
         .from('jobs')
@@ -28,7 +62,7 @@ async function printJobDatesAndCreateFolders() {
         .order('id', { ascending: false });
 
     if (jobIdToExecute) {
-        query = query.eq('id', parseInt(jobIdToExecute, 10)); // Adiciona filtro por ID se o argumento existir
+        query = query.eq('id', parseInt(jobIdToExecute, 10));
         console.log(`Executando apenas o Job ID: ${jobIdToExecute}`);
     } else {
         console.log("Executando todos os jobs.");
@@ -46,7 +80,7 @@ async function printJobDatesAndCreateFolders() {
         return;
     }
 
-    const pageProcessingTimeEstimate = 3; // Estimativa de segundos por página
+    const pageProcessingTimeEstimate = 3;
     const numPagesPerDay = 2;
 
     for (const jobConfig of jobs) {
@@ -54,7 +88,6 @@ async function printJobDatesAndCreateFolders() {
 
         const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
 
-        // Atualiza o status e a estimativa de tempo ao iniciar o job
         try {
             await supabase
                 .from('jobs')
@@ -65,7 +98,6 @@ async function printJobDatesAndCreateFolders() {
             console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
         }
 
-        // Alteração aqui: Salvar na pasta html/original/jobs
         const jobFolderPath = path.join(__dirname, 'html', 'original', 'jobs', jobConfig.id.toString());
 
         try {
@@ -141,6 +173,7 @@ async function printJobDatesAndCreateFolders() {
                     pagePromisesForCurrentDay.push((async () => {
                         let page;
                         let bytesDownloadedForPage = 0;
+                        const requestsForPage = [];
                         try {
                             console.log(`      \x1b[33mProcessando\x1b[0m: \x1b]8;;${airbnbUrl}\x1b\\${pageDescription}\x1b]8;;\x1b\\`);
                             const startTime = performance.now();
@@ -149,13 +182,16 @@ async function printJobDatesAndCreateFolders() {
                             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                             await page.setViewport({ width: 1440, height: 900 });
 
+                            page.on('request', request => {
+                                requestsForPage.push(request);
+                            });
+
                             page.on('response', async (response) => {
                                 try {
                                     const buffer = await response.buffer();
                                     bytesDownloadedForPage += buffer.length;
                                 } catch (e) {
-                                    // Sometimes response.buffer() fails for redirects or other reasons
-                                    // console.warn(`Could not get buffer for ${response.url()}: ${e.message}`);
+                                    // Error handling for responses that might not have a buffer or headers
                                 }
                             });
 
@@ -164,6 +200,8 @@ async function printJobDatesAndCreateFolders() {
                             const content = await page.content();
                             const filePath = path.join(dateFolderPath, fileName);
                             await fs.writeFile(filePath, content);
+
+                            await saveRequestLogs(jobConfig.id, checkinStr, pageNumber + 1, requestsForPage);
 
                             const endTime = performance.now();
                             const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
@@ -181,7 +219,6 @@ async function printJobDatesAndCreateFolders() {
                 }
                 await Promise.all(pagePromisesForCurrentDay);
 
-                // Abate o tempo estimado restante por dia
                 const remainingSecondsAfterDay = estimatedRemainingSeconds - ((dayOffset + 1) * numPagesPerDay * pageProcessingTimeEstimate);
                 try {
                     await supabase
@@ -203,7 +240,6 @@ async function printJobDatesAndCreateFolders() {
                 console.log(`Navegador Puppeteer fechado para Job ID ${jobConfig.id}.`);
             }
         }
-        // Ao finalizar o job, atualiza o status para 'completed' e remaining_seconds para 0
         try {
             await supabase
                 .from('jobs')
