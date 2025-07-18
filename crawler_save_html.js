@@ -65,7 +65,8 @@ async function printJobDatesAndCreateFolders() {
             console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
         }
 
-        const jobFolderPath = path.join(__dirname, 'test', 'jobs', jobConfig.id.toString());
+        // Alteração aqui: Salvar na pasta html/original/jobs
+        const jobFolderPath = path.join(__dirname, 'html', 'original', 'jobs', jobConfig.id.toString());
 
         try {
             await fs.rm(jobFolderPath, { recursive: true, force: true });
@@ -100,6 +101,8 @@ async function printJobDatesAndCreateFolders() {
                 ]
             });
             console.log(`Navegador Puppeteer iniciado para Job ID ${jobConfig.id}.`);
+
+            let totalBytesDownloadedForJob = 0;
 
             for (let dayOffset = 0; dayOffset < jobConfig.days; dayOffset++) {
                 const checkinDate = addDays(today, (1 + dayOffset));
@@ -137,6 +140,7 @@ async function printJobDatesAndCreateFolders() {
 
                     pagePromisesForCurrentDay.push((async () => {
                         let page;
+                        let bytesDownloadedForPage = 0;
                         try {
                             console.log(`      \x1b[33mProcessando\x1b[0m: \x1b]8;;${airbnbUrl}\x1b\\${pageDescription}\x1b]8;;\x1b\\`);
                             const startTime = performance.now();
@@ -144,6 +148,16 @@ async function printJobDatesAndCreateFolders() {
                             page = await browser.newPage();
                             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                             await page.setViewport({ width: 1440, height: 900 });
+
+                            page.on('response', async (response) => {
+                                try {
+                                    const buffer = await response.buffer();
+                                    bytesDownloadedForPage += buffer.length;
+                                } catch (e) {
+                                    // Sometimes response.buffer() fails for redirects or other reasons
+                                    // console.warn(`Could not get buffer for ${response.url()}: ${e.message}`);
+                                }
+                            });
 
                             await page.goto(airbnbUrl, { waitUntil: 'networkidle2', timeout: 90000 });
 
@@ -153,7 +167,9 @@ async function printJobDatesAndCreateFolders() {
 
                             const endTime = performance.now();
                             const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                            console.log(`      \x1b[32mProcessado em ${durationInSeconds} segundos.\x1b[0m`);
+                            console.log(`      \x1b[32mProcessado em ${durationInSeconds} segundos. Bytes baixados para a página: ${(bytesDownloadedForPage / 1024).toFixed(2)} KB\x1b[0m`);
+                            totalBytesDownloadedForJob += bytesDownloadedForPage;
+
                         } catch (error) {
                             console.error(`      Erro ao processar "${pageDescription}" para Job ID ${jobConfig.id}:`, error.message);
                         } finally {
@@ -177,6 +193,7 @@ async function printJobDatesAndCreateFolders() {
                     console.error(`Erro ao atualizar tempo restante do Job ID ${jobConfig.id}:`, updateError.message);
                 }
             }
+            console.log(`\x1b[34mTotal de KB baixados para o Job ID ${jobConfig.id}: ${(totalBytesDownloadedForJob / 1024).toFixed(2)} KB\x1b[0m`);
 
         } catch (browserError) {
             console.error(`Erro ao iniciar ou usar o navegador Puppeteer para Job ID ${jobConfig.id}:`, browserError.message);
