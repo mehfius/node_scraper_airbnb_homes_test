@@ -10,6 +10,9 @@ dotenv.config();
 // Define o caminho para o diretório de dados do usuário do navegador
 const USER_DATA_DIR = path.join(__dirname, 'browser_cache');
 
+// Nova variável para configurar o atraso entre as cargas de página
+const PAGE_LOAD_DELAY_SECONDS = 2; // Configurado para 2 segundos inicialmente
+
 async function saveRequestLogs(jobId, dateStr, pageNumber, requests) {
     const logFolderPath = path.join(__dirname, 'logs', jobId.toString());
     await fs.mkdir(logFolderPath, { recursive: true });
@@ -166,7 +169,7 @@ async function printJobDatesAndCreateFolders() {
                     continue;
                 }
 
-                console.log(`\n    \x1b[36m[${checkinStr}]\x1b[0m`);
+                console.log(`\n      \x1b[36m[${checkinStr}]\x1b[0m`);
 
                 const pagePromisesForCurrentDay = [];
                 for (let pageNumber = 0; pageNumber < numPagesPerDay; pageNumber++) {
@@ -234,6 +237,12 @@ async function printJobDatesAndCreateFolders() {
                     })());
                 }
                 await Promise.all(pagePromisesForCurrentDay);
+
+                // Adiciona o atraso entre as cargas de página para o dia
+                if (numPagesPerDay > 0 && dayOffset < jobConfig.days - 1) { // Só espera se houver mais páginas a serem carregadas e não for o último dia
+                    console.log(`      Aguardando ${PAGE_LOAD_DELAY_SECONDS} segundos antes de processar a próxima data...`);
+                    await new Promise(resolve => setTimeout(resolve, PAGE_LOAD_DELAY_SECONDS * 1000));
+                }
 
                 const remainingSecondsAfterDay = estimatedRemainingSeconds - ((dayOffset + 1) * numPagesPerDay * pageProcessingTimeEstimate);
                 try {
