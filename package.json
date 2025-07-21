@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "save": "node crawler_save_html.js",
+    "save_rooms": "node src/rooms/rooms_crawler_save_html.js",    
     "clear": "node crawler_optimize.js",
+    "clear_rooms": "node src/rooms/rooms_crawler_optimize_html.js",    
     "load": "node crawler_load_html.js",
+    "load_rooms": "node src/rooms/rooms_crawler_load_html.js",
     "update_rooms": "node update_rooms.js",
     "update_hosts": "node update_hosts.js",
     "start": "node index.js",
