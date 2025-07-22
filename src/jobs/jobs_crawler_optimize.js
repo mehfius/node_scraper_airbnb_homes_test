@@ -81,8 +81,9 @@ const processDirectory = (directoryPath, outputBasePath) => {
     }
 };
 
-const startingBaseDir = path.join(__dirname, 'html/original/jobs');
-const outputRoot = path.join(__dirname, 'html/optimized');
+const cwd = process.cwd();
+const startingBaseDir = path.join(cwd, 'html/jobs/original');
+const outputRoot = path.join(cwd, 'html/jobs/optimized');
 
 try {
     if (fs.existsSync(outputRoot)) {
@@ -97,7 +98,7 @@ try {
 
     jobFolders.forEach(jobFolder => {
         const currentStartingDir = path.join(startingBaseDir, jobFolder);
-        const currentOutputStartingDir = path.join(outputRoot, `jobs/${jobFolder}`);
+        const currentOutputStartingDir = path.join(outputRoot, jobFolder);
         fs.mkdirSync(currentOutputStartingDir, { recursive: true });
         processDirectory(currentStartingDir, currentOutputStartingDir);
     });

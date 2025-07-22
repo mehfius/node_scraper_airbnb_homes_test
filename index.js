@@ -1,12 +1,11 @@
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
-const { exec } = require('child_process'); // Adicionei esta linha para importar 'exec'
+const { exec } = require('child_process');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
 
-// Função principal de conexão com Supabase
 function connectSupabase() {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
@@ -15,40 +14,100 @@ function connectSupabase() {
     .on(
       'postgres_changes',
       {
-        event: 'UPDATE', // Monitorar apenas eventos de UPDATE
+        event: 'UPDATE',
         schema: 'public',
         table: 'jobs'
       },
       async (payload) => {
-        // Verifica se o campo 'status' foi alterado para 'start'
-        // E se o payload.old está disponível para comparação (mesmo sem REPLICA IDENTITY FULL,
-        // o Supabase pode enviar o campo antigo se ele for a PK ou se for um campo pequeno alterado)
+
         if (payload.eventType === 'UPDATE' && payload.new.status === 'start') {
           console.log(`[${new Date().toLocaleString('pt-BR')}] Registro ID: ${payload.new.id} teve o status alterado para 'start'. Atualizando para 'working'...`);
 
           const { data, error } = await supabase
             .from('jobs')
             .update({ status: 'working' })
-            .eq('id', payload.new.id); // Certifique-se de que o ID do registro está sendo usado para a atualização
+            .eq('id', payload.new.id);
 
           if (error) {
             console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao atualizar o status para working:`, error);
           } else {
             console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${payload.new.id} atualizado com sucesso para 'working'.`);
 
-            // Executa o comando 'node npm run ID_DO_JOB'
             const jobId = payload.new.id;
-            exec(`npm run save ${jobId}`, (execError, stdout, stderr) => {
+            exec(`npm run save_jobs ${jobId}`, async (execError, stdout, stderr) => {
               if (execError) {
-                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run save ${jobId}': ${execError}`);
+                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run save_jobs ${jobId}': ${execError}`);
                 return;
               }
               if (stdout) {
-                console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run save ${jobId}':\n${stdout}`);
+                console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run save_jobs ${jobId}':\n${stdout}`);
               }
               if (stderr) {
-                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run save ${jobId}' (stderr):\n${stderr}`);
+                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run save_jobs ${jobId}' (stderr):\n${stderr}`);
               }
+
+              const { error: updateOptimizingError } = await supabase
+                .from('jobs')
+                .update({ status: 'optimizing' })
+                .eq('id', jobId);
+
+              if (updateOptimizingError) {
+                console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao atualizar o status para 'optimizing' antes de clear_jobs:`, updateOptimizingError);
+              } else {
+                console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${jobId} atualizado com sucesso para 'optimizing'.`);
+              }
+
+              exec('npm run clear_jobs', (clearError, clearStdout, clearStderr) => {
+                if (clearError) {
+                  console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run clear_jobs': ${clearError}`);
+                  return;
+                }
+                if (clearStdout) {
+                  console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run clear_jobs':\n${clearStdout}`);
+                }
+                if (clearStderr) {
+                  console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run clear_jobs' (stderr):\n${clearStderr}`);
+                }
+
+                // Atualiza o status para 'saving_history' antes de executar load_jobs
+                supabase
+                  .from('jobs')
+                  .update({ status: 'saving_history' })
+                  .eq('id', jobId)
+                  .then(({ error: updateSavingError }) => {
+                    if (updateSavingError) {
+                      console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao atualizar o status para 'saving_history' antes de load_jobs:`, updateSavingError);
+                    } else {
+                      console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${jobId} atualizado com sucesso para 'saving_history'.`);
+                    }
+
+                    // Executa load_jobs com o jobId após clear_jobs
+                    exec(`npm run load_jobs ${jobId}`, async (loadError, loadStdout, loadStderr) => { // Adicionado 'async' aqui
+                      if (loadError) {
+                        console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run load_jobs ${jobId}': ${loadError}`);
+                        return;
+                      }
+                      if (loadStdout) {
+                        console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run load_jobs ${jobId}':\n${loadStdout}`);
+                      }
+                      if (loadStderr) {
+                        console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run load_jobs ${jobId}' (stderr):\n${loadStderr}`);
+                      }
+
+                      // Atualiza o status para 'saved_history_successfully' após load_jobs
+                      const { error: updateSavedError } = await supabase
+                        .from('jobs')
+                        .update({ status: 'saved_history_successfully' })
+                        .eq('id', jobId);
+
+                      if (updateSavedError) {
+                        console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao atualizar o status para 'saved_history_successfully':`, updateSavedError);
+                      } else {
+                        console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${jobId} atualizado com sucesso para 'saved_history_successfully'.`);
+                      }
+                    });
+                  });
+              });
             });
           }
         }
@@ -62,7 +121,6 @@ function connectSupabase() {
       }
     });
 
-  // Evento de atualização em tempo real (para logs ou reconexão)
   supabase
     .channel('jobs_changes')
     .on('REALTIME_SUBSCRIPTION_UPDATE', (update) => {

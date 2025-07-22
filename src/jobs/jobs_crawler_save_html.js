@@ -7,45 +7,10 @@ const puppeteer = require('puppeteer');
 
 dotenv.config();
 
-// Define o caminho para o diretório de dados do usuário do navegador
-const USER_DATA_DIR = path.join(__dirname, 'browser_cache');
+const USER_DATA_DIR = path.join(process.cwd(), 'browser_cache');
 
-// Nova variável para configurar o atraso entre as cargas de página
-const PAGE_LOAD_DELAY_SECONDS = 2; // Configurado para 2 segundos inicialmente
+const PAGE_LOAD_DELAY_SECONDS = 2;
 
-async function saveRequestLogs(jobId, dateStr, pageNumber, requests) {
-    const logFolderPath = path.join(__dirname, 'logs', jobId.toString());
-    await fs.mkdir(logFolderPath, { recursive: true });
-    const logFilePath = path.join(logFolderPath, `${dateStr}_page${pageNumber}.json`);
-
-    const logData = await Promise.all(requests.map(async (req) => {
-        let contentLengthBytes = 0;
-        try {
-            const response = await req.response();
-            if (response) {
-                const headers = response.headers();
-                if (headers['content-length']) {
-                    contentLengthBytes = parseInt(headers['content-length'], 10);
-                } else {
-                    const buffer = await response.buffer();
-                    contentLengthBytes = buffer.length;
-                }
-            }
-        } catch (e) {
-            // Error handling for responses that might not have a buffer or headers
-        }
-        const contentLengthKB = (contentLengthBytes / 1024).toFixed(2); // Convert to KB and fix to 2 decimal places
-        return {
-            url: req.url(),
-            resourceType: req.resourceType(),
-            method: req.method(),
-            contentLengthKB: parseFloat(contentLengthKB) // Salva o tamanho em KB como número
-        };
-    }));
-
-    await fs.writeFile(logFilePath, JSON.stringify(logData, null, 2));
-    console.log(`      \x1b[35mLogs de requisição salvos para Job ID ${jobId}, data ${dateStr}, página ${pageNumber}.\x1b[0m`);
-}
 
 async function printJobDatesAndCreateFolders() {
     const totalStartTime = performance.now();
@@ -88,7 +53,6 @@ async function printJobDatesAndCreateFolders() {
 
     const pageProcessingTimeEstimate = 3;
 
-    // Criar o diretório de cache do navegador se não existir
     try {
         await fs.mkdir(USER_DATA_DIR, { recursive: true });
         console.log(`Diretório de cache do navegador criado/verificado: ${USER_DATA_DIR}`);
@@ -99,10 +63,9 @@ async function printJobDatesAndCreateFolders() {
 
     let browser;
     try {
-        // Inicia o Puppeteer com userDataDir para persistir o cache do navegador
         browser = await puppeteer.launch({
             headless: 'new',
-            userDataDir: USER_DATA_DIR, // <-- AQUI ESTÁ A MUDANÇA PRINCIPAL
+            userDataDir: USER_DATA_DIR,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -116,7 +79,7 @@ async function printJobDatesAndCreateFolders() {
         for (const jobConfig of jobs) {
             console.log(`\n--- Processando Job ID: ${jobConfig.id} ---`);
 
-            const numPagesPerDay = jobConfig.pages; // Pega o atributo pages do banco de dados
+            const numPagesPerDay = jobConfig.pages;
             const estimatedRemainingSeconds = jobConfig.days * numPagesPerDay * pageProcessingTimeEstimate;
 
             try {
@@ -129,22 +92,23 @@ async function printJobDatesAndCreateFolders() {
                 console.error(`Erro ao atualizar status do Job ID ${jobConfig.id}:`, updateError.message);
             }
 
-            const jobFolderPath = path.join(__dirname, 'html', 'original', 'jobs', jobConfig.id.toString());
+            // O caminho base para os arquivos HTML, incluindo 'html/jobs/original/ID_DO_JOB/'
+            const jobSpecificBaseFolderPath = path.join(process.cwd(), 'html', 'jobs', 'original', jobConfig.id.toString());
 
-            // Manter a lógica de criação e limpeza de pastas para os arquivos HTML salvos,
-            // mas o cache do navegador é separado em USER_DATA_DIR.
             try {
-                // Não remove a pasta jobFolderPath se você quiser manter os HTMLs salvos como arquivos
-                await fs.rm(jobFolderPath, { recursive: true, force: true });
+                // Remove a pasta do job (ID_DO_JOB) se existir, para garantir uma limpeza antes de recriar
+                await fs.rm(jobSpecificBaseFolderPath, { recursive: true, force: true });
                 console.log(`Pasta existente de arquivos HTML para o job ${jobConfig.id} removida.`);
             } catch (err) {
                 console.error(`Erro ao remover pasta existente de arquivos HTML para job ${jobConfig.id}:`, err.message);
             }
 
             try {
-                await fs.mkdir(jobFolderPath, { recursive: true });
+                // Cria a pasta do job (ID_DO_JOB)
+                await fs.mkdir(jobSpecificBaseFolderPath, { recursive: true });
+                console.log(`Diretório ${jobSpecificBaseFolderPath} criado/verificado.`);
             } catch (err) {
-                console.error(`Erro ao criar pasta de arquivos HTML para job ${jobConfig.id}:`, err.message);
+                console.error(`Erro ao criar pasta para o job ${jobConfig.id}:`, err.message);
                 continue;
             }
 
@@ -161,15 +125,16 @@ async function printJobDatesAndCreateFolders() {
                 const checkinStr = format(checkinDate, 'yyyy-MM-dd');
                 const checkoutStr = format(checkoutDate, 'yyyy-MM-dd');
 
-                const dateFolderPath = path.join(jobFolderPath, checkinStr);
+                // A pasta da data agora fica dentro da pasta ID_DO_JOB
+                const dateSpecificFolderPath = path.join(jobSpecificBaseFolderPath, checkinStr);
                 try {
-                    await fs.mkdir(dateFolderPath, { recursive: true });
+                    await fs.mkdir(dateSpecificFolderPath, { recursive: true });
                 } catch (err) {
                     console.error(`Erro ao criar pasta para data ${checkinStr} do job ${jobConfig.id}:`, err.message);
                     continue;
                 }
 
-                console.log(`\n      \x1b[36m[${checkinStr}]\x1b[0m`);
+                console.log(`\n        \x1b[36m[${checkinStr}]\x1b[0m`);
 
                 const pagePromisesForCurrentDay = [];
                 for (let pageNumber = 0; pageNumber < numPagesPerDay; pageNumber++) {
@@ -188,14 +153,14 @@ async function printJobDatesAndCreateFolders() {
 
                     const pageDescription = `Página ${pageNumber + 1}`;
                     const fileName = `${(pageNumber + 1).toString().padStart(2, '0')}.html`;
-                    const filePath = path.join(dateFolderPath, fileName);
+                    const filePath = path.join(dateSpecificFolderPath, fileName);
 
                     pagePromisesForCurrentDay.push((async () => {
                         let page;
                         let bytesDownloadedForPage = 0;
                         const requestsForPage = [];
                         try {
-                            console.log(`      \x1b[33mProcessando\x1b[0m: \x1b]8;;${airbnbUrl}\x1b\\${pageDescription}\x1b]8;;\x1b\\`);
+                            console.log(`        \x1b[33mProcessando\x1b[0m: \x1b]8;;${airbnbUrl}\x1b\\${pageDescription}\x1b]8;;\x1b\\`);
                             const startTime = performance.now();
 
                             page = await browser.newPage();
@@ -211,7 +176,7 @@ async function printJobDatesAndCreateFolders() {
                                     const buffer = await response.buffer();
                                     bytesDownloadedForPage += buffer.length;
                                 } catch (e) {
-                                    // Error handling for responses that might not have a buffer or headers
+
                                 }
                             });
 
@@ -220,15 +185,13 @@ async function printJobDatesAndCreateFolders() {
                             const content = await page.content();
                             await fs.writeFile(filePath, content);
 
-                            await saveRequestLogs(jobConfig.id, checkinStr, pageNumber + 1, requestsForPage);
-
                             const endTime = performance.now();
                             const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                            console.log(`      \x1b[32mProcessado em ${durationInSeconds} segundos. Bytes baixados para a página: ${(bytesDownloadedForPage / 1024).toFixed(2)} KB\x1b[0m`);
+                            console.log(`        \x1b[32mProcessado em ${durationInSeconds} segundos. Bytes baixados para a página: ${(bytesDownloadedForPage / 1024).toFixed(2)} KB\x1b[0m`);
                             totalBytesDownloadedForJob += bytesDownloadedForPage;
 
                         } catch (error) {
-                            console.error(`      Erro ao processar "${pageDescription}" para Job ID ${jobConfig.id}:`, error.message);
+                            console.error(`        Erro ao processar "${pageDescription}" para Job ID ${jobConfig.id}:`, error.message);
                         } finally {
                             if (page) {
                                 await page.close();
@@ -238,9 +201,8 @@ async function printJobDatesAndCreateFolders() {
                 }
                 await Promise.all(pagePromisesForCurrentDay);
 
-                // Adiciona o atraso entre as cargas de página para o dia
-                if (numPagesPerDay > 0 && dayOffset < jobConfig.days - 1) { // Só espera se houver mais páginas a serem carregadas e não for o último dia
-                    console.log(`      Aguardando ${PAGE_LOAD_DELAY_SECONDS} segundos antes de processar a próxima data...`);
+                if (numPagesPerDay > 0 && dayOffset < jobConfig.days - 1) {
+                    console.log(`        Aguardando ${PAGE_LOAD_DELAY_SECONDS} segundos antes de processar a próxima data...`);
                     await new Promise(resolve => setTimeout(resolve, PAGE_LOAD_DELAY_SECONDS * 1000));
                 }
 
