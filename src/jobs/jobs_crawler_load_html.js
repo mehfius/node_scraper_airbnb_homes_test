@@ -80,7 +80,6 @@ async function countElementsInHtmlFiles(startPath, jobValue) {
                         const historyData = {
                             room,
                             position,
-                            availables,
                             job,
                             checkin,
                             checkout,
