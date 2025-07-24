@@ -82,8 +82,15 @@ const processDirectory = (directoryPath, outputBasePath) => {
 };
 
 const cwd = process.cwd();
-const startingBaseDir = path.join(cwd, 'html/jobs/original');
-const outputRoot = path.join(cwd, 'html/jobs/optimized');
+const jobId = process.argv[2]; // Get the job ID from command line arguments
+
+if (!jobId) {
+    console.error('Usage: node your_script_name.js <job_id>');
+    process.exit(1);
+}
+
+const startingBaseDir = path.join(cwd, 'html/jobs/original', jobId);
+const outputRoot = path.join(cwd, 'html/jobs/optimized', jobId);
 
 try {
     if (fs.existsSync(outputRoot)) {
@@ -92,16 +99,12 @@ try {
     }
     fs.mkdirSync(outputRoot, { recursive: true });
 
-    const jobFolders = fs.readdirSync(startingBaseDir).filter(file => {
-        return fs.statSync(path.join(startingBaseDir, file)).isDirectory();
-    });
-
-    jobFolders.forEach(jobFolder => {
-        const currentStartingDir = path.join(startingBaseDir, jobFolder);
-        const currentOutputStartingDir = path.join(outputRoot, jobFolder);
-        fs.mkdirSync(currentOutputStartingDir, { recursive: true });
-        processDirectory(currentStartingDir, currentOutputStartingDir);
-    });
+    if (fs.existsSync(startingBaseDir) && fs.statSync(startingBaseDir).isDirectory()) {
+        processDirectory(startingBaseDir, outputRoot);
+    } else {
+        console.error(`Diretório do job não encontrado: ${startingBaseDir}`);
+        process.exit(1);
+    }
 
 } catch (error) {
     console.error(`Erro ao processar o diretório base:`, error);
