@@ -74,18 +74,19 @@ function connectSupabase() {
                   console.log(`[${new Date().toLocaleString('pt-BR')}] Status do registro ID: ${jobId} atualizado com sucesso para 'optimizing'.`);
                 }
 
-                exec('npm run clear_jobs', (clearError, clearStdout, clearStderr) => {
+                // Alteração aqui: Adicionando jobId ao comando clear_jobs
+                exec(`npm run clear_jobs ${jobId}`, (clearError, clearStdout, clearStderr) => {
                   if (clearError) {
-                    console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run clear_jobs': ${clearError}`);
+                    console.error(`[${new Date().toLocaleString('pt-BR')}] Erro ao executar o comando 'npm run clear_jobs ${jobId}': ${clearError}`);
                     // Se clear_jobs falha, talvez atualizar o status do job para 'failed'
                     supabaseClient.from('jobs').update({ status: 'failed_clear_jobs' }).eq('id', jobId);
                     return;
                   }
                   if (clearStdout) {
-                    console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run clear_jobs':\n${clearStdout}`);
+                    console.log(`[${new Date().toLocaleString('pt-BR')}] Saída do comando 'npm run clear_jobs ${jobId}':\n${clearStdout}`);
                   }
-                  if (clearStderr) {
-                    console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run clear_jobs' (stderr):\n${clearStderr}`);
+                  if (stderr) {
+                    console.error(`[${new Date().toLocaleString('pt-BR')}] Erro no comando 'npm run clear_jobs ${jobId}' (stderr):\n${stderr}`);
                   }
 
                   supabaseClient
