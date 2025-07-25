@@ -1,0 +1,5 @@
+/node_modules
+/html
+/browser_cache
+/trash
+.env
