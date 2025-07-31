@@ -3,5 +3,6 @@
 /test
 /html
 .env
+.shell
 /browser_cache
 /src/html
