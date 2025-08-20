@@ -1,4 +1,4 @@
-FROM mehfius/node-puppeteer-ngrok
+FROM node:20-slim
 WORKDIR /app
 COPY . .
 RUN npm install

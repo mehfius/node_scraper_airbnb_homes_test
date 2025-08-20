@@ -10,19 +10,17 @@
     "clear_rooms": "node src/rooms/rooms_crawler_optimize_html.js",    
     "load_jobs": "node src/jobs/jobs_crawler_load_html.js",
     "load_rooms": "node src/rooms/rooms_crawler_load_html.js",
-    "start": "node index.js.js",
-    "jobs": "node src/jobs.js",
+    "start": "node index.js",
+    "jobs": "node src/jobs/jobs.js",
+    "hosts": "node src/hosts/hosts.js",
+    "rooms": "node src/rooms/rooms.js",        
     "docker:build": "docker build -t mehfius/scrapebnb-jobs --no-cache .",
     "docker:push": "docker push mehfius/scrapebnb-jobs",
     "docker:release": "npm run docker:build && npm run docker:push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
-    "cheerio": "^1.1.0",
     "date-fns": "^4.1.0",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "jsdom": "^26.1.0",
-    "puppeteer": "^24.11.1"
+    "dotenv": "^16.5.0"
   }
 }

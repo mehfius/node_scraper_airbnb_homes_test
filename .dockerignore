@@ -2,4 +2,5 @@
 /html
 /browser_cache
 /trash
+/tests
 .env
