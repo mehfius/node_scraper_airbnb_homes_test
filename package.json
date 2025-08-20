@@ -11,6 +11,7 @@
     "load_jobs": "node src/jobs/jobs_crawler_load_html.js",
     "load_rooms": "node src/rooms/rooms_crawler_load_html.js",
     "start": "node index.js.js",
+    "jobs": "node src/jobs.js",
     "docker:build": "docker build -t mehfius/scrapebnb-jobs --no-cache .",
     "docker:push": "docker push mehfius/scrapebnb-jobs",
     "docker:release": "npm run docker:build && npm run docker:push"
