@@ -96,7 +96,7 @@ async function getRoomsAndFetchAvailability() {
     const { data, error } = await supabase
       .from('rooms')
       .select('id')
-      .limit(10);
+     // .limit(10);
 
     if (error) {
       console.error("Error fetching rooms:", error);
@@ -106,9 +106,16 @@ async function getRoomsAndFetchAvailability() {
     const ids = data.map(room => room.id);
     processedRoomCount = ids.length;
 
+    const totalRooms = ids.length;
+    let processedCount = 0;
     for (const id of ids) {
       await fetchAvailability(String(id), nextBatchId);
+      processedCount++;
+      const percentage = Math.round((processedCount / totalRooms) * 100);
+      const progressText = `Processando quartos: ${percentage}% (${processedCount}/${totalRooms})`;
+      process.stdout.write(`\r${progressText}`);
     }
+    process.stdout.write('\n');
 
   } catch (error) {
     console.error('Erro geral durante a execução:', error.message);
