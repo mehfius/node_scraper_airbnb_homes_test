@@ -152,6 +152,11 @@ async function getRoomsAndFetchAvailability() {
                 fetchAvailability(String(id), nextBatchId).then(result => handleResult(result, id))
             );
             await Promise.allSettled(promises);
+
+            if (i + CONCURRENCY_LEVEL < totalRooms) {
+                //console.log('\n\nAguardando 2 segundos antes do próximo lote...\n');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
         }
     } else {
         for (const id of ids) {
