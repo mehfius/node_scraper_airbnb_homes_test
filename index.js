@@ -14,6 +14,11 @@ async function runJobs() {
         const commandHosts = `npm run hosts`;
         console.log(`Executing: ${commandHosts}`);
         execSync(commandHosts, { encoding: 'utf-8', stdio: 'inherit' });
+
+        const commandRoomsAvailability = `npm run rooms_availability_calendar`;
+        console.log(`Executing: ${commandHosts}`);
+        execSync(commandRoomsAvailability, { encoding: 'utf-8', stdio: 'inherit' });
+
     } catch (e) {
         console.error(`Error executing command:`, e);
     }

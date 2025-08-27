@@ -13,7 +13,8 @@
     "start": "node index.js",
     "jobs": "node src/jobs/jobs.js",
     "hosts": "node src/hosts/hosts.js",
-    "rooms": "node src/rooms/rooms.js",        
+    "rooms": "node src/rooms/rooms.js",          
+    "rooms_availability_calendar": "node src/rooms/rooms_availability_calendar.js",     
     "docker:build": "docker build -t mehfius/scrapebnb-jobs --no-cache .",
     "docker:push": "docker push mehfius/scrapebnb-jobs",
     "docker:release": "npm run docker:build && npm run docker:push"

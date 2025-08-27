@@ -87,7 +87,7 @@ async function fetchAvailability(listingId, batchId) {
 async function getRoomsAndFetchAvailability() {
   console.log('Iniciando o script de busca de disponibilidade...');
   const startTime = new Date();
-  let processedRoomCount = 0;
+  let processedRoomCount = 4;
   let errorCount = 0;
   const failedItems = [];
 
@@ -114,7 +114,7 @@ async function getRoomsAndFetchAvailability() {
     const { data, error } = await supabase
       .from('rooms')
       .select('id::text')
-      //.limit(100);
+      .order('id', { ascending: false })
 
     if (error) {
       console.error("\nError fetching rooms:", error);
@@ -155,7 +155,7 @@ async function getRoomsAndFetchAvailability() {
 
             if (i + CONCURRENCY_LEVEL < totalRooms) {
                 //console.log('\n\nAguardando 2 segundos antes do próximo lote...\n');
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
     } else {
